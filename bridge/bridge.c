@@ -11,6 +11,7 @@ volatile int ncars;			// total cars randomly arriving
 volatile int n;				// how many cars can the bridge handle
 volatile int crossing[2];	// how many cars are currently crossing (left/right side)
 volatile int blocked[2];	// how many cars are waiting to cross (left/right side)
+volatile int limit[2];
 
 pthread_mutex_t cs_common_mtx;
 pthread_mutex_t queue_mtx[2];	// blocks cars from crossing bridge
@@ -26,6 +27,8 @@ void mtx_init() {
 	crossing[1] = 0;
 	blocked[0] = 0;
 	blocked[1] = 0;
+	limit[0] = 0;
+	limit[1] = 0;
 
 	pthread_mutex_init(&cs_common_mtx, NULL);	// cs_common_mtx = 1
 
@@ -58,13 +61,15 @@ void *car_func(void *arg) {
 		pthread_mutex_unlock(&cs_common_mtx);
 		pthread_mutex_lock(&queue_mtx[side]);
 		// when signaled... unblock 1-by-1 only up to max_bridge_cars cars
-		if (blocked[side] > 0) {
-			if (crossing[side] < n) {
-				blocked[side]--;
-				crossing[side]++;
-				/*printf("Cars on bridge: %d (+1)\n", crossing[side]);*/
-				pthread_mutex_unlock(&queue_mtx[side]);
-			}
+		if ((blocked[side] > 0)&&(crossing[side] < n)&&(limit[side] < n)){
+			blocked[side]--;
+			limit[side]++;
+			crossing[side]++;
+			/*printf("Cars on bridge: %d (+1)\n", crossing[side]);*/
+			pthread_mutex_unlock(&queue_mtx[side]);
+		}
+		else {
+			pthread_mutex_unlock(&cs_common_mtx);
 		}
 	}
 	// if there are no cars on the other side just pass the bridge...
@@ -81,13 +86,15 @@ void *car_func(void *arg) {
 			pthread_mutex_unlock(&cs_common_mtx);
 			pthread_mutex_lock(&queue_mtx[side]);
 			// when signaled.. unblock 1-by1 only up to max_bridge_cars cars
-			if (blocked[side] > 0) {
-				if (crossing[side] < n) {
-					blocked[side]--;
-					crossing[side]++;
-					/*printf("Cars on bridge: %d (+1)\n", crossing[side]);*/
-					pthread_mutex_unlock(&queue_mtx[side]);
-				}
+			if ((blocked[side] > 0)&&(crossing[side] < n)&&(limit[side] < n)){
+				blocked[side]--;
+				limit[side]++;
+				crossing[side]++;
+				/*printf("Cars on bridge: %d (+1)\n", crossing[side]);*/
+				pthread_mutex_unlock(&queue_mtx[side]);
+			}
+			else {
+				pthread_mutex_unlock(&cs_common_mtx);
 			}
 		}
 	}
@@ -103,21 +110,34 @@ void *car_func(void *arg) {
 	/*printf("Cars on bridge: %d (-1)\n", crossing[side]);*/
 
 	// once all cars crossing the bridge are done...
-	// give priotity to the opposite side (unblock signal)
-	if ((crossing[side] == 0) && (blocked[!side] > 0)) {
-		printf("%s: giving priority to other side (cars waiting there)\n", (side?"right":"left"));
-		blocked[!side]--;
-		crossing[!side]++;
-		/*printf("Cars on bridge: %d (+1)\n", crossing[!side]);*/
-		pthread_mutex_unlock(&queue_mtx[!side]);
+	if ((crossing[side] == 0)) {
+		// give priotity to the opposite side (unblock signal)
+		if (blocked[!side] > 0) {
+			printf("%s: giving priority to other side (cars waiting there)\n", (side?"right":"left"));
+			blocked[!side]--;
+			limit[!side] = 1;
+			crossing[!side]++;
+			/*printf("Cars on bridge: %d (+1)\n", crossing[!side]);*/
+			pthread_mutex_unlock(&queue_mtx[!side]);
+		}
+		else  {
+			// else take priority
+			if (blocked[side] > 0) {
+				printf("%s: no other cars on the opposite side..but there are cars waiting on the same side\n", (side?"right":"left"));
+				blocked[side]--;
+				limit[side] = 1;
+				crossing[side]++;
+				pthread_mutex_unlock(&queue_mtx[side]);
+			}
+			else {
+				printf("%s: no waiting cars in general. first car arriving will take priority\n", (side?"right":"left"));
+				pthread_mutex_unlock(&cs_common_mtx);
+			}
+		}
 	}
 	else {
-		if (crossing[side] == 0) {
-			printf("%s: no other cars on the opposite side..Any car comming first will take bridge\n", (side?"right":"left"));
-		}
-
+		pthread_mutex_unlock(&cs_common_mtx);
 	}
-	pthread_mutex_unlock(&cs_common_mtx);
 
 
 	cars_done++;
