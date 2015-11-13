@@ -1,0 +1,34 @@
+create_workers(n);
+
+
+while(1) {
+        
+    down(mtx);
+    
+    to_paint--;
+    if (to_paint == -1) {
+        up(mtx);
+        down(sleep);
+        down(mtx);
+    }
+
+    // find available slice and paint
+    for (i=0; i<n; i++) {
+        if (slice[i] == 1) {
+            draw_region(i);
+            done_paint++;
+            slice[i] = 0;
+        }
+    }
+
+    up(mtx);
+
+    if (done_paint == n) {
+        for (i=0; i<n; i++) {
+            up(wait_for_work);
+            down(chain_block);
+        }
+        done_paint = 0;
+    }
+
+}

@@ -1,0 +1,18 @@
+read_num();
+
+while(1) {
+    
+
+    down(mtx);
+    
+    calc_region();
+    slice[i] = 1;
+    to_paint++;
+    if (to_paint == 0) { up(sleep); }
+
+    up(mtx);
+   
+    down(wait_for_work);
+    up(chain_block);
+
+}
