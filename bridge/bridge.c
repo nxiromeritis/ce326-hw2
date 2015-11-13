@@ -27,8 +27,8 @@ void mtx_init() {
 	crossing[1] = 0;
 	blocked[0] = 0;
 	blocked[1] = 0;
-	limit[0] = 0;
-	limit[1] = 0;
+	limit[0] = 1;
+	limit[1] = 1;
 
 	// cs_common_mtx = 1
 	if (pthread_mutex_init(&cs_common_mtx, NULL)) {
