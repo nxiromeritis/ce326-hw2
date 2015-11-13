@@ -196,6 +196,7 @@ void *pthread_work(void *arg) {
 		// down(cs_mtx)
 		if (pthread_mutex_lock(&cs_mtx)) {
 			perror("pthread_mutex_lock");
+			exit(1);
 		}
 
 		mandel_Calc(&slices[i],maxIterations,&res[i*slices[i].imSteps*slices[i].reSteps]);
@@ -206,6 +207,7 @@ void *pthread_work(void *arg) {
 		if (to_paint == 0) {
 			if (pthread_mutex_unlock(&main_sleep)) {
 				perror("pthread_mutex_unlock");
+				exit(1);
 			}
 		}
 		printf("\nthread %d: done\n", i);
@@ -213,6 +215,7 @@ void *pthread_work(void *arg) {
 		// up(cs_mtx)
 		if (pthread_mutex_unlock(&cs_mtx)) {
 			perror("pthread_mutex_unlock");
+			exit(1);
 		}
 
 
@@ -223,10 +226,12 @@ void *pthread_work(void *arg) {
 		// down(wait_for_work)
 		if (pthread_mutex_lock(&wait_for_work)) {
 			perror("pthread_mutex_lock");
+			exit(1);
 		}
 		// up(chain_block)
 		if (pthread_mutex_unlock(&chain_block)) {
 			perror("pthread_mutex_unlock");
+			exit(1);
 		}
 	}
 	return(NULL);
